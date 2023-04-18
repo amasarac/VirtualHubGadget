@@ -24,14 +24,24 @@ make
 ```
 # Run the program with the following command:
 ```bash
-./usb_transfer_manager
+./usb-gadget
 ```
 ___
-# Usage
+# Usage Overview
 * Connect the USB device to the host computer. and run the transfer manager on the host to export the usb devices.
 * Connect the gadget host to the endpoint computer.
 * Run the Virtual Hub Gadget program as described in the installation instructions.
 * Use the program to perform data transfers to and from the USB device.
+___
+#The command line interface for the Virtual Hub Gadget driver consists of the following commands:
+* **list**: Lists the available USB devices on the host system.
+* **attach** [device]: Attaches the specified USB device to the virtual hub gadget.
+* **detach** [device]: Detaches the specified USB device from the virtual hub gadget.
+* **connect** [device1] [device2]: Connects two USB devices to each other via the virtual hub gadget.
+* **disconnect** [device]: Disconnects a USB device from the virtual hub gadget.
+* **reset** [device]: Resets a USB device that is connected to the virtual hub gadget.
+* **quit**: Quits the CLI and unloads the Virtual Hub Gadget driver from the kernel.
+### The ***attach, detach, connect, disconnect, and reset*** commands require the ***device parameter***, which can be either the ***device ID*** or the ***device name*** as listed by the list command.
 ___
 # Contributing
 
