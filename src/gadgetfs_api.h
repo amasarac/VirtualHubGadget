@@ -2,10 +2,10 @@
 #define GADGETFS_API_H
 
 #include <stdint.h>
-#include <linux/usb/ch9.h>
+#include <usr/include/linux/usb/ch9.h>
 //gadgetfs_api.h
 
-#include <linux/usb/gadget.h>
+#include <usr/include/linux/usb/gadget.h>
 #include <libusb-1.0/libusb.h>
 #include <unistd.h>
 #include "isochronous_queue.h"
