@@ -14,7 +14,7 @@ typedef enum {
 
 typedef struct {
     connection_state_t usbip_connection_state;
-    // other members...
+    bool usbip_connected;
 } cli_t;
 
 
