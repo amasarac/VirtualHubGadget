@@ -5,7 +5,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include "transfer.h"
-#include "transfer_request.h"
+//#include "transfer_request.h"
 
 typedef struct {
     transfer_request_t *requests;
