@@ -43,6 +43,12 @@ ___
 * **quit**: Quits the CLI and unloads the Virtual Hub Gadget driver from the kernel.
 ### The ***attach, detach, connect, disconnect, and reset*** commands require the ***device parameter***, which can be either the ***device ID*** or the ***device name*** as listed by the list command.
 ___
+***The connect command is used to establish a connection between the host and the USB gadget device. It takes one argument, which is the path to the gadget device file (e.g. /dev/hidg0 for HID gadgets). The command first checks if the specified gadget device file exists, and if not, it prints an error message and exits.***
+
+***If the device file exists, the command opens the file and sets the gadget device to the CONFIGURED state. If the device is already in the CONFIGURED state, the command prints a message and does nothing. If the device is in any other state, the command sets the device to the CONFIGURED state, and then waits for the host to send a SET_CONFIGURATION request.***
+
+***Once the host sends the SET_CONFIGURATION request, the command sends a CONFIGURATION message back to the host, indicating that the configuration has been set. At this point, the gadget device is fully connected to the host, and any data transfer can begin.***
+___
 # Contributing
 
 Contributions to the project are welcome. To contribute, please fork the repository, make your changes, and submit a pull request. Be sure to follow the project's code style and formatting guidelines.
