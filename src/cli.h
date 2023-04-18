@@ -18,7 +18,7 @@ typedef struct {
 } cli_t;
 
 
-void cli_init(cli_t *cli);
+void cli_init(cli_t **cli_ptr);
 void cli_connect(cli_t *cli, const char *server_address);
 void cli_disconnect(cli_t *cli);
 void cli_cleanup(cli_t *cli);
