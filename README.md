@@ -12,7 +12,7 @@ ___
 # Installation
 Clone the repository to your local machine.
 ```bash
-git clone https://github.com/username/repo.git
+git clone https://https://github.com/amasarac/VirtualHubGadget.git
 ```
 # Install the LibUSB 1.0 library if not already installed. For example, on Ubuntu, you can use the following command:
 ```bash
