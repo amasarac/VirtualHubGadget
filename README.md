@@ -22,6 +22,10 @@ sudo apt-get install libusb-1.0-0-dev
 ```bash
 make
 ```
+# Run shell script that sets the gadget configuration and loads it as a USB gadget driver
+```bash
+./install.sh
+```
 # Run the program with the following command:
 ```bash
 ./usb-gadget
