@@ -7,5 +7,6 @@
 #include "gadgetfs_api.h"
 
 int usb_gadget_start(const char *gadgetfs_dir, libusb_device *device);
+void *handle_usbip_traffic(void *arg);
 
 #endif // USB_GADGET_H

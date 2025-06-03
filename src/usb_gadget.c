@@ -245,33 +245,7 @@ static void *handle_gadgetfs_events(void *arg) {
     return NULL;
 }
 
-
-int usb_gadget_start(const char *gadgetfs_dir, libusb_device *device) {
-    if (!gadgetfs_dir || !device) {
-        return -1;
-    }
-
-    usb_device_info_t device_info;
-
-    // Populate device_info from the libusb_device
-
-    gadgetfs_t gfs;
-    if (gadgetfs_init(&gfs, gadgetfs_dir, &device_info) < 0) {
-        perror("Error initializing GadgetFS");
-        return -1;
-    }
-
-    pthread_t gadgetfs_thread;
-    int thread_create_result = pthread_create(&gadgetfs_thread, NULL, handle_gadgetfs_events, &gfs.fd);
-    if (thread_create_result != 0) {
-        perror("Error creating GadgetFS event handling thread");
-        gadgetfs_exit(&gfs);
-        return -1;
-    }
-
-    // Handle other USB gadget tasks, such as processing USB/IP traffic
-    // and communicating with the GadgetFS events handling thread
-    static void *handle_usbip_traffic(void *arg) {
+void *handle_usbip_traffic(void *arg) {
     libusb_device *device = (libusb_device *)arg;
 
     // Initialize USB/IP traffic handling
@@ -282,7 +256,10 @@ int usb_gadget_start(const char *gadgetfs_dir, libusb_device *device) {
         return NULL;
     }
 
-    libusb_device_handle *handle = libusb_open_device_with_vid_pid(context, libusb_get_device_vendor_id(device), libusb_get_device_product_id(device));
+    libusb_device_handle *handle = libusb_open_device_with_vid_pid(
+        context,
+        libusb_get_device_vendor_id(device),
+        libusb_get_device_product_id(device));
     if (!handle) {
         fprintf(stderr, "Error opening device with USB/IP: %s\n", libusb_error_name(result));
         libusb_exit(context);
@@ -308,7 +285,7 @@ int usb_gadget_start(const char *gadgetfs_dir, libusb_device *device) {
             break;
         }
 
-        // Forward the incoming packet to the appropriate endpoint using the `forward_data` function
+        // Forward the incoming packet to the appropriate endpoint
         usbip_packet_t *in_packet = (usbip_packet_t *)in_buffer;
         usb_transfer_t transfer;
         transfer.endpoint_address = in_packet->base.ep;
@@ -336,6 +313,40 @@ int usb_gadget_start(const char *gadgetfs_dir, libusb_device *device) {
 
     return NULL;
 }
+
+
+int usb_gadget_start(const char *gadgetfs_dir, libusb_device *device) {
+    if (!gadgetfs_dir || !device) {
+        return -1;
+    }
+
+    usb_device_info_t device_info;
+
+    // Populate device_info from the libusb_device
+
+    gadgetfs_t gfs;
+    if (gadgetfs_init(&gfs, gadgetfs_dir, &device_info) < 0) {
+        perror("Error initializing GadgetFS");
+        return -1;
+    }
+
+    pthread_t gadgetfs_thread;
+    int thread_create_result = pthread_create(&gadgetfs_thread, NULL, handle_gadgetfs_events, &gfs.fd);
+    if (thread_create_result != 0) {
+        perror("Error creating GadgetFS event handling thread");
+        gadgetfs_exit(&gfs);
+        return -1;
+    }
+
+    // Create a thread to handle USB/IP traffic
+    pthread_t usbip_thread;
+    thread_create_result = pthread_create(&usbip_thread, NULL, handle_usbip_traffic, device);
+    if (thread_create_result != 0) {
+        perror("Error creating USB/IP handling thread");
+        close(gadgetfs_fd);
+        return -1;
+    }
+
 
 
 
