@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -pthread
-LDFLAGS = -ludev
+LDFLAGS = -ludev -lusb-1.0
 
 SRC_DIR = src
 BUILD_DIR = build
