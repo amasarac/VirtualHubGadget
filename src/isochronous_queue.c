@@ -3,6 +3,8 @@
 #include "isochronous_queue.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <unistd.h>
 
 void isochronous_transfer_queue_init(isochronous_transfer_queue_t *queue, int capacity) {
     queue->capacity = capacity;
@@ -17,9 +19,9 @@ void isochronous_transfer_queue_init(isochronous_transfer_queue_t *queue, int ca
 
 void isochronous_transfer_queue_destroy(isochronous_transfer_queue_t *q) {
     // Free any memory allocated for the queue
-    if (q->transfers) {
-        free(q->transfers);
-        q->transfers = NULL;
+    if (q->queue) {
+        free(q->queue);
+        q->queue = NULL;
     }
 
     // Set the queue size to zero
