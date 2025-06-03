@@ -20,6 +20,18 @@ typedef struct {
 } transfer_request_t;
 
 typedef struct {
+    int endpoint_fd;
+    void *data;
+    uint32_t length;
+} interrupt_transfer_t;
+
+typedef struct {
+    int endpoint_fd;
+    void *data;
+    uint32_t length;
+} bulk_transfer_t;
+
+typedef struct {
     transfer_type_t type;
     uint8_t endpoint;
     void* data;

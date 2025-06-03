@@ -5,7 +5,6 @@
 #include <errno.h>
 
 #include "interrupt_transfer_queue.h"
-#include "common.h"
 
 #define QUEUE_SIZE 10
 

@@ -1,11 +1,15 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -pthread
-LDFLAGS = -ludev
+LDFLAGS =
 
 SRC_DIR = src
 BUILD_DIR = build
 
-SRCS = $(wildcard $(SRC_DIR)/*.c)
+SRCS = \
+    $(SRC_DIR)/main.c \
+    $(SRC_DIR)/isochronous_queue.c \
+    $(SRC_DIR)/interrupt_transfer_queue.c \
+    $(SRC_DIR)/bulk_transfer_queue.c
 OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRCS))
 
 TARGET = usb-gadget
