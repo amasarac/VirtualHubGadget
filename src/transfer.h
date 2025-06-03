@@ -28,4 +28,14 @@ typedef struct {
     int status;
 } transfer_t;
 
+/*
+ * The queue implementations expect dedicated structs for the different
+ * transfer types.  The original sources did not provide explicit
+ * definitions for these, so map them to the generic transfer_t
+ * structure here.  This keeps the interfaces intact while allowing the
+ * code to compile and be unit tested.
+ */
+typedef transfer_t interrupt_transfer_t;
+typedef transfer_t bulk_transfer_t;
+
 #endif /* TRANSFER_H */
