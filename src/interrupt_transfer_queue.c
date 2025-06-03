@@ -9,40 +9,34 @@
 
 #define QUEUE_SIZE 10
 
-struct interrupt_transfer_queue_t {
-    int endpoint_fd;
-    bool *shutdown_flag;
-    interrupt_transfer_t buffer[QUEUE_SIZE];
-    int head;
-    int tail;
-};
-
 void interrupt_transfer_queue_init(interrupt_transfer_queue_t *queue, int capacity) {
-    queue->buffer = (interrupt_transfer_t *)malloc(capacity * sizeof(interrupt_transfer_t));
-    if (queue->buffer == NULL) {
+    queue->buffer = malloc(capacity * sizeof(interrupt_transfer_t));
+    if (!queue->buffer) {
         fprintf(stderr, "Failed to allocate memory for interrupt transfer queue\n");
         exit(EXIT_FAILURE);
     }
+
     queue->capacity = capacity;
     queue->front = 0;
     queue->rear = -1;
     queue->count = 0;
+
     pthread_mutex_init(&queue->lock, NULL);
     pthread_cond_init(&queue->not_empty, NULL);
     pthread_cond_init(&queue->not_full, NULL);
 }
 
 interrupt_transfer_queue_t* interrupt_transfer_queue_create(int endpoint_fd, bool *shutdown_flag) {
-    interrupt_transfer_queue_t *queue = (interrupt_transfer_queue_t *)malloc(sizeof(interrupt_transfer_queue_t));
-    if (queue == NULL) {
+    (void)endpoint_fd;
+    (void)shutdown_flag;
+
+    interrupt_transfer_queue_t *queue = malloc(sizeof(interrupt_transfer_queue_t));
+    if (!queue) {
         fprintf(stderr, "Error: Failed to allocate memory for interrupt transfer queue.\n");
         exit(EXIT_FAILURE);
     }
 
-    queue->endpoint_fd = endpoint_fd;
-    queue->shutdown_flag = shutdown_flag;
-    queue->head = 0;
-    queue->tail = 0;
+    interrupt_transfer_queue_init(queue, QUEUE_SIZE);
 
     return queue;
 }
@@ -60,25 +54,23 @@ void interrupt_transfer_queue_enqueue(interrupt_transfer_queue_t *queue, interru
 }
 
 void interrupt_transfer_queue_dequeue(interrupt_transfer_queue_t *queue, interrupt_transfer_t *transfer) {
-    pthread_mutex_lock(&queue->mutex);
+    pthread_mutex_lock(&queue->lock);
 
-    while (queue->head == NULL) {
-        pthread_cond_wait(&queue->cond, &queue->mutex);
+    while (queue->count == 0) {
+        pthread_cond_wait(&queue->not_empty, &queue->lock);
     }
 
-    *transfer = *(queue->head);
+    *transfer = queue->buffer[queue->front];
+    queue->front = (queue->front + 1) % queue->capacity;
+    queue->count--;
 
-    if (queue->head == queue->tail) {
-        queue->head = NULL;
-        queue->tail = NULL;
-    } else {
-        queue->head = queue->head->next;
-    }
-
-    pthread_mutex_unlock(&queue->mutex);
+    pthread_cond_signal(&queue->not_full);
+    pthread_mutex_unlock(&queue->lock);
 }
 
 void interrupt_transfer_queue_destroy(interrupt_transfer_queue_t *queue) {
-    pthread_mutex_destroy(&queue->mutex);
-    pthread_cond_destroy(&queue->cond);
+    free(queue->buffer);
+    pthread_mutex_destroy(&queue->lock);
+    pthread_cond_destroy(&queue->not_empty);
+    pthread_cond_destroy(&queue->not_full);
 }
