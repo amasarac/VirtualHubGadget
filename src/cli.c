@@ -6,29 +6,6 @@
 #include <errno.h>
 #include "cli.h"
 
-void start_cli() {
-    char input[100];
-    printf("Welcome to the virtual USB hub CLI!\n");
-
-    while (1) {
-        printf(">");
-        fgets(input, sizeof(input), stdin);
-        input[strcspn(input, "\n")] = 0;
-
-        // Execute command based on user input
-        if (strcmp(input, "list_devices") == 0) {
-            cli_list_devices();
-        } else if (strcmp(input, "connect_device") == 0) {
-            cli_connect_device();
-        } else if (strcmp(input, "disconnect_device") == 0) {
-            cli_disconnect_device();
-        } else if (strcmp(input, "list_connected_devices") == 0) {
-            cli_list_connected_devices();
-        } else {
-            printf("Unknown command\n");
-        }
-    }
-}
 
 void cli_init(cli_t **cli_ptr) {
     *cli_ptr = (cli_t*) malloc(sizeof(cli_t));

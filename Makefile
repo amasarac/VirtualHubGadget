@@ -5,7 +5,10 @@ LDFLAGS = -ludev
 SRC_DIR = src
 BUILD_DIR = build
 
-SRCS = $(wildcard $(SRC_DIR)/*.c)
+SRCS = \
+    $(SRC_DIR)/main.c \
+    $(SRC_DIR)/cli.c \
+    $(SRC_DIR)/bulk_transfer_queue.c
 OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRCS))
 
 TARGET = usb-gadget
