@@ -72,7 +72,7 @@ usb_device_t *usb_device_open(int vid, int pid) {
 }
 
 void usb_device_close(usb_device_t *device) {
-    // Close device file descriptor
+    // Close device handle
     close(device->fd);
 
     // Free device memory
