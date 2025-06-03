@@ -255,17 +255,17 @@ int usb_gadget_start(const char *gadgetfs_dir, libusb_device *device) {
 
     // Populate device_info from the libusb_device
 
-    int gadgetfs_fd = gadgetfs_init(gadgetfs_dir, &device_info);
-    if (gadgetfs_fd < 0) {
+    gadgetfs_t gfs;
+    if (gadgetfs_init(&gfs, gadgetfs_dir, &device_info) < 0) {
         perror("Error initializing GadgetFS");
         return -1;
     }
 
     pthread_t gadgetfs_thread;
-    int thread_create_result = pthread_create(&gadgetfs_thread, NULL, handle_gadgetfs_events, &gadgetfs_fd);
+    int thread_create_result = pthread_create(&gadgetfs_thread, NULL, handle_gadgetfs_events, &gfs.fd);
     if (thread_create_result != 0) {
         perror("Error creating GadgetFS event handling thread");
-        close(gadgetfs_fd);
+        gadgetfs_exit(&gfs);
         return -1;
     }
 
