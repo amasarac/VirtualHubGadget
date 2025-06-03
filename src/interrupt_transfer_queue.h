@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include "transfer.h"
+#include "common.h"
 
 typedef struct {
     interrupt_transfer_t *buffer;
