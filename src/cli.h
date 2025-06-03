@@ -23,4 +23,10 @@ void cli_connect(cli_t *cli, const char *server_address);
 void cli_disconnect(cli_t *cli);
 void cli_cleanup(cli_t *cli);
 
+/* Additional CLI commands */
+void cli_list_devices(void);
+void cli_connect_device(void);
+void cli_disconnect_device(void);
+void cli_list_connected_devices(void);
+
 #endif // CLI_H
