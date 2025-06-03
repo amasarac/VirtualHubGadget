@@ -2,10 +2,8 @@
 #define GADGETFS_API_H
 
 #include <stdint.h>
-#include <usr/include/linux/usb/ch9.h>
-//gadgetfs_api.h
-
-#include <usr/include/linux/usb/gadget.h>
+#include <linux/usb/ch9.h>
+#include <linux/usb/gadgetfs.h>
 #include <libusb-1.0/libusb.h>
 #include <unistd.h>
 #include "isochronous_queue.h"
@@ -21,20 +19,10 @@ typedef struct {
     struct usb_hub_config_descriptor config_desc;
 } usb_device_info_t;
 
-ssize_t cnt = libusb_get_device_list(ctx, &devs);
-usb_device_info_t *devices = malloc(cnt * sizeof(usb_device_info_t));
-
-for (ssize_t i = 0; i < cnt; i++) {
-    libusb_device *device = devs[i];
-    libusb_get_device_descriptor(device, &devices[i].dev_desc);
-    libusb_get_active_config_descriptor(device, &devices[i].config_desc);
-}
 
 int gadgetfs_init(const char *gadgetfs_dir, const usb_device_info_t *device_info);
 int gadgetfs_poll_fd(int fd);
 void *handle_device(void *arg);
-
-int gadgetfs_init(const char *mount_path);
 int gadgetfs_write_descriptor(int gadgetfs_fd, const void *descriptor, uint16_t length);
 
 int initialize_device_with_libusb(libusb_device *device, int *control_fd, int *endpoint_fd);
