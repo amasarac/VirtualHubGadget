@@ -3,6 +3,8 @@
 #include "isochronous_queue.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <unistd.h>
 
 void isochronous_transfer_queue_init(isochronous_transfer_queue_t *queue, size_t capacity) {
     queue->capacity = capacity;
