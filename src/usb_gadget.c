@@ -338,6 +338,73 @@ int usb_gadget_start(const char *gadgetfs_dir, libusb_device *device) {
         return -1;
     }
 
+    // Handle other USB gadget tasks, such as processing USB/IP traffic
+    // and communicating with the GadgetFS events handling thread
+    static void *handle_usbip_traffic(void *arg) {
+    libusb_device *device = (libusb_device *)arg;
+
+    // Initialize USB/IP traffic handling
+    libusb_context *context;
+    int result = libusb_init(&context);
+    if (result < 0) {
+        fprintf(stderr, "Error initializing libusb: %s\n", libusb_error_name(result));
+        return NULL;
+    }
+
+    libusb_device_handle *handle = libusb_open_device_with_vid_pid(context, libusb_get_device_vendor_id(device), libusb_get_device_product_id(device));
+    if (!handle) {
+        fprintf(stderr, "Error opening device with USB/IP: %s\n", libusb_error_name(result));
+        libusb_exit(context);
+        return NULL;
+    }
+
+    result = libusb_claim_interface(handle, 0);
+    if (result < 0) {
+        fprintf(stderr, "Error claiming interface with USB/IP: %s\n", libusb_error_name(result));
+        libusb_close(handle);
+        libusb_exit(context);
+        return NULL;
+    }
+
+    while (1) {
+        // Process incoming USB/IP traffic
+        unsigned char in_buffer[USBIP_MAX_DATA_SIZE];
+        int actual_length;
+
+        result = libusb_bulk_transfer(handle, USBIP_IN_ENDPOINT, in_buffer, sizeof(in_buffer), &actual_length, 0);
+        if (result < 0) {
+            fprintf(stderr, "Error receiving USB/IP packet: %s\n", libusb_error_name(result));
+            break;
+        }
+
+        // Forward the incoming packet to the appropriate endpoint using the `forward_data` function
+        usbip_packet_t *in_packet = (usbip_packet_t *)in_buffer;
+        usb_transfer_t transfer;
+        transfer.endpoint_address = in_packet->base.ep;
+        transfer.transfer_type = in_packet->base.type;
+        transfer.num_iso_packets = in_packet->base.num;
+        transfer.packet_length = in_packet->base.len;
+        transfer.timeout = 5000;
+        memcpy(transfer.data, in_packet->data, actual_length - sizeof(usbip_header_t));
+        forward_data(&transfer);
+
+        // Send outgoing USB/IP traffic
+        unsigned char out_buffer[USBIP_MAX_DATA_SIZE];
+        // Pack the outgoing packets into a USB/IP packet format
+
+        result = libusb_bulk_transfer(handle, USBIP_OUT_ENDPOINT, out_buffer, sizeof(out_buffer), &actual_length, 0);
+        if (result < 0) {
+            fprintf(stderr, "Error sending USB/IP packet: %s\n", libusb_error_name(result));
+            break;
+        }
+    }
+
+    libusb_release_interface(handle, 0);
+    libusb_close(handle);
+    libusb_exit(context);
+
+    return NULL;
+}
     // Create a thread to handle USB/IP traffic
     pthread_t usbip_thread;
     thread_create_result = pthread_create(&usbip_thread, NULL, handle_usbip_traffic, device);
