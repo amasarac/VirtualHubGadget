@@ -1,6 +1,11 @@
 import subprocess
 import tkinter as tk
 
+# Global variables used by the GUI logic
+devices = []
+checked_items = []
+bound_devices = []
+
 def list_devices():
     # Execute the 'list --local' command and capture the output
     output = subprocess.check_output(['usbip', 'list', '--local']).decode('utf-8')
@@ -88,7 +93,13 @@ class App(tk.Tk):
         for device in selected_devices:
             device_name = device.split()[0]
             print(f"Binding {device_name}...")
-            os.system(f"sudo usbip bind -b {device_name}")
+            subprocess.run([
+                "sudo",
+                "usbip",
+                "bind",
+                "-b",
+                device_name,
+            ], check=True)
             bound_devices.append(device_name)
             
         # Update the checkboxes
@@ -109,7 +120,13 @@ class App(tk.Tk):
         for device in selected_devices:
             device_name = device.split()[0]
             print(f"Unbinding {device_name}...")
-            os.system(f"sudo usbip unbind -b {device_name}")
+            subprocess.run([
+                "sudo",
+                "usbip",
+                "unbind",
+                "-b",
+                device_name,
+            ], check=True)
             bound_devices.remove(device_name)
             
         # Update the checkboxes
