@@ -7,6 +7,7 @@ BUILD_DIR = build
 
 SRCS = \
     $(SRC_DIR)/main.c \
+    $(SRC_DIR)/cli.c \
     $(SRC_DIR)/isochronous_queue.c \
     $(SRC_DIR)/interrupt_transfer_queue.c \
     $(SRC_DIR)/bulk_transfer_queue.c
