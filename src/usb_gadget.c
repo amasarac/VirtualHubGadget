@@ -245,6 +245,75 @@ static void *handle_gadgetfs_events(void *arg) {
     return NULL;
 }
 
+void *handle_usbip_traffic(void *arg) {
+    libusb_device *device = (libusb_device *)arg;
+
+    // Initialize USB/IP traffic handling
+    libusb_context *context;
+    int result = libusb_init(&context);
+    if (result < 0) {
+        fprintf(stderr, "Error initializing libusb: %s\n", libusb_error_name(result));
+        return NULL;
+    }
+
+    libusb_device_handle *handle = libusb_open_device_with_vid_pid(
+        context,
+        libusb_get_device_vendor_id(device),
+        libusb_get_device_product_id(device));
+    if (!handle) {
+        fprintf(stderr, "Error opening device with USB/IP: %s\n", libusb_error_name(result));
+        libusb_exit(context);
+        return NULL;
+    }
+
+    result = libusb_claim_interface(handle, 0);
+    if (result < 0) {
+        fprintf(stderr, "Error claiming interface with USB/IP: %s\n", libusb_error_name(result));
+        libusb_close(handle);
+        libusb_exit(context);
+        return NULL;
+    }
+
+    while (1) {
+        // Process incoming USB/IP traffic
+        unsigned char in_buffer[USBIP_MAX_DATA_SIZE];
+        int actual_length;
+
+        result = libusb_bulk_transfer(handle, USBIP_IN_ENDPOINT, in_buffer, sizeof(in_buffer), &actual_length, 0);
+        if (result < 0) {
+            fprintf(stderr, "Error receiving USB/IP packet: %s\n", libusb_error_name(result));
+            break;
+        }
+
+        // Forward the incoming packet to the appropriate endpoint
+        usbip_packet_t *in_packet = (usbip_packet_t *)in_buffer;
+        usb_transfer_t transfer;
+        transfer.endpoint_address = in_packet->base.ep;
+        transfer.transfer_type = in_packet->base.type;
+        transfer.num_iso_packets = in_packet->base.num;
+        transfer.packet_length = in_packet->base.len;
+        transfer.timeout = 5000;
+        memcpy(transfer.data, in_packet->data, actual_length - sizeof(usbip_header_t));
+        forward_data(&transfer);
+
+        // Send outgoing USB/IP traffic
+        unsigned char out_buffer[USBIP_MAX_DATA_SIZE];
+        // Pack the outgoing packets into a USB/IP packet format
+
+        result = libusb_bulk_transfer(handle, USBIP_OUT_ENDPOINT, out_buffer, sizeof(out_buffer), &actual_length, 0);
+        if (result < 0) {
+            fprintf(stderr, "Error sending USB/IP packet: %s\n", libusb_error_name(result));
+            break;
+        }
+    }
+
+    libusb_release_interface(handle, 0);
+    libusb_close(handle);
+    libusb_exit(context);
+
+    return NULL;
+}
+
 
 int usb_gadget_start(const char *gadgetfs_dir, libusb_device *device) {
     if (!gadgetfs_dir || !device) {
@@ -255,16 +324,25 @@ int usb_gadget_start(const char *gadgetfs_dir, libusb_device *device) {
 
     // Populate device_info from the libusb_device
 
-    int gadgetfs_fd = gadgetfs_init(gadgetfs_dir, &device_info);
-    if (gadgetfs_fd < 0) {
+    gadgetfs_t gfs;
+    if (gadgetfs_init(&gfs, gadgetfs_dir, &device_info) < 0) {
         perror("Error initializing GadgetFS");
         return -1;
     }
 
     pthread_t gadgetfs_thread;
-    int thread_create_result = pthread_create(&gadgetfs_thread, NULL, handle_gadgetfs_events, &gadgetfs_fd);
+    int thread_create_result = pthread_create(&gadgetfs_thread, NULL, handle_gadgetfs_events, &gfs.fd);
     if (thread_create_result != 0) {
         perror("Error creating GadgetFS event handling thread");
+        gadgetfs_exit(&gfs);
+        return -1;
+    }
+
+    // Create a thread to handle USB/IP traffic
+    pthread_t usbip_thread;
+    thread_create_result = pthread_create(&usbip_thread, NULL, handle_usbip_traffic, device);
+    if (thread_create_result != 0) {
+        perror("Error creating USB/IP handling thread");
         close(gadgetfs_fd);
         return -1;
     }
@@ -336,6 +414,15 @@ int usb_gadget_start(const char *gadgetfs_dir, libusb_device *device) {
 
     return NULL;
 }
+    // Create a thread to handle USB/IP traffic
+    pthread_t usbip_thread;
+    thread_create_result = pthread_create(&usbip_thread, NULL, handle_usbip_traffic, device);
+    if (thread_create_result != 0) {
+        perror("Error creating USB/IP handling thread");
+        close(gadgetfs_fd);
+        return -1;
+    }
+
 
 
 
