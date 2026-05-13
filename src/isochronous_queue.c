@@ -19,6 +19,7 @@ void isochronous_transfer_queue_init(isochronous_transfer_queue_t *queue, size_t
 
 
 void isochronous_transfer_queue_destroy(isochronous_transfer_queue_t *q) {
+    // Free any memory allocated for the queue
     if (q->queue) {
         free(q->queue);
         q->queue = NULL;
