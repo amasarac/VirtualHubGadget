@@ -7,6 +7,7 @@
 #include "isochronous_queue.h"
 #include "interrupt_transfer_queue.h"
 #include "bulk_transfer_queue.h"
+#include "common.h"
 
 /* Simple representation of a connected device.  */
 typedef struct {
