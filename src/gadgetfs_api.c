@@ -30,30 +30,30 @@ static int read_string_descriptor(libusb_device_handle *dev_handle, uint8_t inde
 }
 
 
-int gadgetfs_init(const char *gadgetfs_dir, const struct usb_device_info_t *device_info) {
-    if (!gadgetfs_dir || !device_info) {
+int gadgetfs_init(gadgetfs_t *gfs, const char *gadgetfs_dir, const usb_device_info_t *device_info) {
+    if (!gfs || !gadgetfs_dir || !device_info) {
         return -1;
     }
 
-    int gadgetfs_fd = open(gadgetfs_dir, O_RDWR);
-    if (gadgetfs_fd < 0) {
+    gfs->fd = open(gadgetfs_dir, O_RDWR);
+    if (gfs->fd < 0) {
         perror("Error opening GadgetFS directory");
         return -1;
     }
 
     // Write the device descriptor
-    int ret = write(gadgetfs_fd, &device_info->device_desc, sizeof(device_info->device_desc));
+    int ret = write(gfs->fd, &device_info->device_desc, sizeof(device_info->device_desc));
     if (ret < 0) {
         perror("Error writing GadgetFS device descriptor");
-        close(gadgetfs_fd);
+        close(gfs->fd);
         return -1;
     }
 
     // Write the configuration descriptor
-    ret = write(gadgetfs_fd, &device_info->config_desc, sizeof(device_info->config_desc));
+    ret = write(gfs->fd, &device_info->config_desc, sizeof(device_info->config_desc));
     if (ret < 0) {
         perror("Error writing GadgetFS configuration descriptor");
-        close(gadgetfs_fd);
+        close(gfs->fd);
         return -1;
     }
 
@@ -66,19 +66,20 @@ int gadgetfs_init(const char *gadgetfs_dir, const struct usb_device_info_t *devi
             const struct usb_endpoint_descriptor *ep_desc = &device_info->config_desc.ep;
 
             // Write the GadgetFS endpoint descriptor to the gadgetfs_fd
-            ret = write(gadgetfs_fd, ep_desc, sizeof(*ep_desc));
+            ret = write(gfs->fd, ep_desc, sizeof(*ep_desc));
             if (ret < 0) {
                 perror("Error writing GadgetFS endpoint descriptor");
-                close(gadgetfs_fd);
+                close(gfs->fd);
                 return -1;
             }
         }
     }
 
-    return gadgetfs_fd;
+    gfs->initialized = 1;
+    return 0;
 }
 
-int gadgetfs_poll_event(int fd, struct gadgetfs_event *event) {
+int gadgetfs_poll_event(int fd, struct usb_gadgetfs_event *event) {
     struct pollfd pfd = {
         .fd = fd,
         .events = POLLIN,
@@ -94,7 +95,7 @@ int gadgetfs_poll_event(int fd, struct gadgetfs_event *event) {
         return -1;
     } else if (ret > 0) {
         if (pfd.revents & POLLIN) {
-            ssize_t len = read(fd, event, sizeof(struct gadgetfs_event));
+            ssize_t len = read(fd, event, sizeof(struct usb_gadgetfs_event));
             if (len < 0) {
                 perror("Error reading GadgetFS event");
                 return -1;
@@ -129,19 +130,15 @@ void *handle_device(void *arg) {
     int gadgetfs_fd = *(int *)arg;
     isochronous_transfer_queue_t iso_queue;
 
-    isochronous_transfer_queue_init(&iso_queue);
+    isochronous_transfer_queue_init(&iso_queue, 8);
 
     while (1) {
         int poll_result = gadgetfs_poll_fd(gadgetfs_fd);
         if (poll_result == 1) {
-            // Handle USB events
-            usbip_device_event_t event;
-            int ret = gadgetfs_read_event(gadgetfs_fd, &event);
-            if (ret == 0) {
-                if (event.type == USBIP_DEVICE_EVENT_ISOCHRONOUS_TRANSFER) {
-                    // This is an isochronous transfer event
-                    isochronous_transfer_queue_enqueue(&iso_queue, event.isochronous_transfer.data, event.isochronous_transfer.length);
-                    isochronous_transfer_queue_trigger(&iso_queue);
+            struct usb_gadgetfs_event event;
+            if (gadgetfs_read_event(gadgetfs_fd, &event) == 0) {
+                if (event.type == GADGETFS_SETUP) {
+                    /* handle setup events if needed */
                 }
             }
         } else if (poll_result == -1) {
@@ -149,45 +146,57 @@ void *handle_device(void *arg) {
         }
     }
 
-    isochronous_transfer_queue_cleanup(&iso_queue);
+    isochronous_transfer_queue_destroy(&iso_queue);
 
     return NULL;
 }
 int gadgetfs_handle_event(gadgetfs_t *gfs, usb_transfer_t *transfer) {
-    if (!gfs->initialized) {
+    if (!gfs || !gfs->initialized || !transfer) {
         fprintf(stderr, "GadgetFS not initialized\n");
         return -1;
     }
 
-    // Handle different transfer types based on the value of transfer->transfer_type
+    ssize_t ret = -1;
     switch (transfer->transfer_type) {
         case CONTROL_TRANSFER:
-            // /* Start the watchdog timer */
-WDTCR = (1 << WDE) | (1 << WDCE);
-WDTCR = (1 << WDE) | (1 << WDP0);
-
-//Process control transfer request and manage the hub's state
-            break;
         case BULK_TRANSFER:
-            // Handle bulk transfers
-            break;
         case INTERRUPT_TRANSFER:
-            // Handle interrupt transfers
-            break;
         case ISOCHRONOUS_TRANSFER:
-            // Handle isochronous transfers
+            ret = write(gfs->fd, transfer->data, transfer->length);
             break;
         default:
             fprintf(stderr, "Invalid transfer type: %d\n", transfer->transfer_type);
             return -1;
     }
 
+    if (ret < 0) {
+        perror("gadgetfs write failed");
+        return -1;
+    }
+
     return 0;
 }
 
-void gadgetfs_exit(void) {
-    if (gadgetfs_fd >= 0) {
-        close(gadgetfs_fd);
-        gadgetfs_fd = -1;
+void gadgetfs_exit(gadgetfs_t *gfs) {
+    if (gfs && gfs->fd >= 0) {
+        close(gfs->fd);
+        gfs->fd = -1;
+        gfs->initialized = 0;
     }
+}
+
+int gadgetfs_read_event(int fd, struct usb_gadgetfs_event *event) {
+    ssize_t len = read(fd, event, sizeof(*event));
+    if (len < 0) {
+        return -1;
+    }
+    return 0;
+}
+
+int gadgetfs_event(int fd, struct usb_gadgetfs_event *event) {
+    struct usb_gadgetfs_event ev;
+    struct usb_gadgetfs_event *out = event ? event : &ev;
+    if (gadgetfs_read_event(fd, out) < 0)
+        return -1;
+    return out->type;
 }

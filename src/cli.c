@@ -6,29 +6,6 @@
 #include <errno.h>
 #include "cli.h"
 
-void start_cli() {
-    char input[100];
-    printf("Welcome to the virtual USB hub CLI!\n");
-
-    while (1) {
-        printf(">");
-        fgets(input, sizeof(input), stdin);
-        input[strcspn(input, "\n")] = 0;
-
-        // Execute command based on user input
-        if (strcmp(input, "list_devices") == 0) {
-            cli_list_devices();
-        } else if (strcmp(input, "connect_device") == 0) {
-            cli_connect_device();
-        } else if (strcmp(input, "disconnect_device") == 0) {
-            cli_disconnect_device();
-        } else if (strcmp(input, "list_connected_devices") == 0) {
-            cli_list_connected_devices();
-        } else {
-            printf("Unknown command\n");
-        }
-    }
-}
 
 void cli_init(cli_t **cli_ptr) {
     *cli_ptr = (cli_t*) malloc(sizeof(cli_t));
@@ -128,4 +105,44 @@ void cli_cleanup(cli_t *cli) {
     if (cli->usbip_connected) {
         cli_disconnect(cli);
     }
+}
+
+void cli_list_devices(void) {
+    printf("Listing available USB/IP devices...\n");
+    system("usbip list -r localhost");
+}
+
+void cli_connect_device(void) {
+    char busid[128];
+    printf("Enter the device busid to attach: ");
+    if (!fgets(busid, sizeof(busid), stdin)) {
+        fprintf(stderr, "Failed to read busid\n");
+        return;
+    }
+    busid[strcspn(busid, "\n")] = 0;
+
+    char cmd[256];
+    snprintf(cmd, sizeof(cmd), "usbip attach -r localhost -b %s", busid);
+    printf("%s\n", cmd);
+    system(cmd);
+}
+
+void cli_disconnect_device(void) {
+    char port[128];
+    printf("Enter the port number to detach: ");
+    if (!fgets(port, sizeof(port), stdin)) {
+        fprintf(stderr, "Failed to read port\n");
+        return;
+    }
+    port[strcspn(port, "\n")] = 0;
+
+    char cmd[256];
+    snprintf(cmd, sizeof(cmd), "usbip detach -p %s", port);
+    printf("%s\n", cmd);
+    system(cmd);
+}
+
+void cli_list_connected_devices(void) {
+    printf("Listing attached USB/IP devices...\n");
+    system("usbip port");
 }
