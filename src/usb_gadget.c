@@ -338,6 +338,15 @@ int usb_gadget_start(const char *gadgetfs_dir, libusb_device *device) {
         return -1;
     }
 
+    // Create a thread to handle USB/IP traffic
+    pthread_t usbip_thread;
+    thread_create_result = pthread_create(&usbip_thread, NULL, handle_usbip_traffic, device);
+    if (thread_create_result != 0) {
+        perror("Error creating USB/IP handling thread");
+        close(gadgetfs_fd);
+        return -1;
+    }
+
     // Handle other USB gadget tasks, such as processing USB/IP traffic
     // and communicating with the GadgetFS events handling thread
     static void *handle_usbip_traffic(void *arg) {
