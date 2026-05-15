@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -pthread
-LDFLAGS =
+CFLAGS = -Wall -Wextra -pthread -Isrc -Wno-unused-variable -Wno-unused-parameter
+LDFLAGS = -lusb-1.0
 
 SRC_DIR = src
 BUILD_DIR = build
@@ -9,7 +9,12 @@ SRCS = \
     $(SRC_DIR)/main.c \
     $(SRC_DIR)/isochronous_queue.c \
     $(SRC_DIR)/interrupt_transfer_queue.c \
-    $(SRC_DIR)/bulk_transfer_queue.c
+    $(SRC_DIR)/bulk_transfer_queue.c \
+    $(SRC_DIR)/gadgetfs_api.c \
+    $(SRC_DIR)/usb_device.c \
+    $(SRC_DIR)/usb_gadget.c \
+    $(SRC_DIR)/usb_interface.c \
+    $(SRC_DIR)/cli.c
 OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRCS))
 
 TARGET = usb-gadget
