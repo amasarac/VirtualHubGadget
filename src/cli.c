@@ -6,29 +6,6 @@
 #include <errno.h>
 #include "cli.h"
 
-void start_cli() {
-    char input[100];
-    printf("Welcome to the virtual USB hub CLI!\n");
-
-    while (1) {
-        printf(">");
-        fgets(input, sizeof(input), stdin);
-        input[strcspn(input, "\n")] = 0;
-
-        // Execute command based on user input
-        if (strcmp(input, "list_devices") == 0) {
-            cli_list_devices();
-        } else if (strcmp(input, "connect_device") == 0) {
-            cli_connect_device();
-        } else if (strcmp(input, "disconnect_device") == 0) {
-            cli_disconnect_device();
-        } else if (strcmp(input, "list_connected_devices") == 0) {
-            cli_list_connected_devices();
-        } else {
-            printf("Unknown command\n");
-        }
-    }
-}
 
 void cli_init(cli_t **cli_ptr) {
     *cli_ptr = (cli_t*) malloc(sizeof(cli_t));
@@ -74,7 +51,7 @@ if (!fgets(input, sizeof(input), stdin)) {
 }
 
 // Construct the `usbip` command to connect to the selected devices
-char cmd_connect[1024];
+char cmd_connect[2048];
 snprintf(cmd_connect, sizeof(cmd_connect), "usbip --debug attach -r %s %s", server_address, input);
 
 // Execute the command and check for errors
@@ -109,7 +86,7 @@ void cli_disconnect(cli_t *cli) {
     fgets(ids, sizeof(ids), stdin);
 
     // Construct the `usbip` command to unbind and detach the selected devices
-    char cmd[1024];
+    char cmd[4096];
     snprintf(cmd, sizeof(cmd), "usbip unbind --usbids %s && usbip detach --usbids %s", ids, ids);
 
     // Execute the command and check for errors

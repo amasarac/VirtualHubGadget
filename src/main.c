@@ -1,12 +1,14 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
 
 #include "isochronous_queue.h"
 #include "interrupt_transfer_queue.h"
 #include "bulk_transfer_queue.h"
+#include "cli.h"
 
 /* Simple representation of a connected device.  */
 typedef struct {
@@ -58,8 +60,25 @@ static void *bulk_transfer_sender(void *arg)
     return NULL;
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
+    if (argc > 1) {
+        cli_t *cli;
+        cli_init(&cli);
+
+        if (argc > 2 && strcmp(argv[1], "connect") == 0) {
+            cli_connect(cli, argv[2]);
+        } else if (argc > 1 && strcmp(argv[1], "disconnect") == 0) {
+            cli_disconnect(cli);
+        } else {
+            printf("Usage: %s connect <server> | disconnect\n", argv[0]);
+        }
+
+        cli_cleanup(cli);
+        free(cli);
+        return 0;
+    }
+
     /* Initialize transfer queues with explicit capacities. */
     isochronous_transfer_queue_t iso_queue;
     isochronous_transfer_queue_init(&iso_queue, 8);

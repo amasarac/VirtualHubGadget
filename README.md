@@ -3,6 +3,7 @@
 The Virtual Hub Gadget is a gadgetFS driver that emulates a USB hub. It lets multiple USB devices connect to a single port on the host computer. This is helpful for embedded systems, IoT devices or other scenarios where several devices need to share one USB port. The gadget is compatible with any host that supports USB hubs, including the Steam Link and Steam Deck from Valve Inc.
 
 ## USB Device Transfer Manager
+The USB Device Transfer Manager of the VirtualHubGadget is a program that allows for coordinated and synchronized data transfer between a USB device and a host computer. It supports multiple transfer types, such as control, interrupt, isochronous, and bulk transfers, and uses multiple threads to handle each transfer type separately.
 
 The transfer manager coordinates data flow between a USB device and the host. It handles control, interrupt, isochronous and bulk transfers in separate threads to keep everything synchronized.
 ___
