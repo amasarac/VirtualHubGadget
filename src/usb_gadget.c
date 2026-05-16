@@ -1,13 +1,65 @@
-//usbgadget.c
+#include <pthread.h>
 
 #include <stdio.h>
-#include <pthread.h>
-#include "usb_gadget.h"
 #include <stdlib.h>
-#include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
 #include <signal.h>
 #include "gadgetfs_api.h"
+#include "usb_gadget.h"
+#include <pthread.h>
+#include <fcntl.h>
+
+/* Stub for USBIP structures to fix compile errors */
+typedef struct { uint32_t command; uint32_t seqnum; uint32_t devid; uint32_t direction; uint32_t ep; uint32_t num; uint32_t len; } usbip_header_t;
+typedef struct { usbip_header_t base; unsigned char data[0]; } usbip_packet_t;
+#define USBIP_MAX_DATA_SIZE 4096
+#define USBIP_IN_ENDPOINT 0x81
+#define USBIP_OUT_ENDPOINT 0x01
+
+void forward_isochronous_transfer(int config_index, int iface_index, int altsetting_index, int ep_index) {
+    (void)config_index; (void)iface_index; (void)altsetting_index; (void)ep_index;
+}
+
+void forward_control_transfer() {}
+
+void forward_bulk_transfer(int src_ep_addr, int dst_ep_addr) {
+    (void)src_ep_addr; (void)dst_ep_addr;
+}
+
+void forward_interrupt_transfer(int src_ep_addr, int dst_ep_addr) {
+    (void)src_ep_addr; (void)dst_ep_addr;
+}
+
+void forward_data(usb_transfer_t *transfer) {
+    (void)transfer;
+}
+
+static void *handle_gadgetfs_events(void *arg) {
+    int gadgetfs_fd = *(int *)arg;
+
+    while (1) {
+        int poll_result = gadgetfs_poll_fd(gadgetfs_fd);
+        if (poll_result > 0) {
+            int event_type = gadgetfs_event(gadgetfs_fd, NULL);
+            switch (event_type) {
+                case GADGETFS_NOP: break;
+                case GADGETFS_CONNECT: printf("Device connected\n"); break;
+                case GADGETFS_DISCONNECT: printf("Device disconnected\n"); break;
+                case GADGETFS_SETUP: printf("Setup packet received\n"); break;
+                case GADGETFS_SUSPEND: printf("Device suspended\n"); break;
+                default: fprintf(stderr, "Unknown GadgetFS event: %d\n", event_type); break;
+            }
+        } else if (poll_result < 0) {
+            perror("Error polling GadgetFS");
+            break;
+        }
+    }
+    return NULL;
+}
+
+
+
 
 libusb_device_handle *src_dev_handle; // Source device handle
 libusb_device_handle *dst_dev_handle; // Destination device handle
@@ -319,8 +371,8 @@ int usb_gadget_start(const char *gadgetfs_dir, libusb_device *device) {
     if (!gadgetfs_dir || !device) {
         return -1;
     }
-
     usb_device_info_t device_info;
+    memset(&device_info, 0, sizeof(device_info));
 
     // Populate device_info from the libusb_device
 

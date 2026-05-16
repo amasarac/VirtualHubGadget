@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -pthread
+CFLAGS = -Wall -Wextra -pthread -Isrc -Wno-unused-variable -Wno-unused-parameter
 TEST_CFLAGS = $(CFLAGS) -I$(SRC_DIR)
 TEST_LDFLAGS = -lcmocka
 LDFLAGS = -ludev -lusb-1.0
@@ -12,7 +12,12 @@ SRCS = \
     $(SRC_DIR)/cli.c \
     $(SRC_DIR)/isochronous_queue.c \
     $(SRC_DIR)/interrupt_transfer_queue.c \
-    $(SRC_DIR)/bulk_transfer_queue.c
+    $(SRC_DIR)/bulk_transfer_queue.c \
+    $(SRC_DIR)/gadgetfs_api.c \
+    $(SRC_DIR)/usb_device.c \
+    $(SRC_DIR)/usb_gadget.c \
+    $(SRC_DIR)/usb_interface.c \
+    $(SRC_DIR)/cli.c
 OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRCS))
 
 TARGET = usb-gadget
