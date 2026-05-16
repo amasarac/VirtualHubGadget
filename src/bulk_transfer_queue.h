@@ -5,7 +5,6 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include "transfer.h"
-//#include "transfer_request.h"
 
 typedef struct {
     transfer_request_t *requests;
@@ -13,9 +12,13 @@ typedef struct {
     int head;
     int tail;
     bool full;
+    pthread_mutex_t lock;
+    pthread_cond_t not_empty;
+    pthread_cond_t not_full;
 } bulk_transfer_queue_t;
 
 void bulk_transfer_queue_init(bulk_transfer_queue_t *queue, transfer_request_t *requests, int size);
+void bulk_transfer_queue_destroy(bulk_transfer_queue_t *queue);
 bool bulk_transfer_queue_enqueue(bulk_transfer_queue_t *queue, const transfer_request_t *request);
 bool bulk_transfer_queue_dequeue(bulk_transfer_queue_t *queue, transfer_request_t *request);
 

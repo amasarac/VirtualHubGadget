@@ -51,7 +51,7 @@ if (!fgets(input, sizeof(input), stdin)) {
 }
 
 // Construct the `usbip` command to connect to the selected devices
-char cmd_connect[1024];
+char cmd_connect[2048];
 snprintf(cmd_connect, sizeof(cmd_connect), "usbip --debug attach -r %s %s", server_address, input);
 
 // Execute the command and check for errors
@@ -86,7 +86,7 @@ void cli_disconnect(cli_t *cli) {
     fgets(ids, sizeof(ids), stdin);
 
     // Construct the `usbip` command to unbind and detach the selected devices
-    char cmd[1024];
+    char cmd[4096];
     snprintf(cmd, sizeof(cmd), "usbip unbind --usbids %s && usbip detach --usbids %s", ids, ids);
 
     // Execute the command and check for errors

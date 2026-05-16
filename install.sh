@@ -52,8 +52,9 @@ if [[ ! -d functions/hub.usb0 ]]; then
 fi
 echo 4 > functions/hub.usb0/ports
 
-ln -s functions/hid.usb0 configs/c.1/
-ln -s functions/hub.usb0 configs/c.1/
+mkdir -p configs/c.1
+ln -sf functions/hid.usb0 configs/c.1/
+ln -sf functions/hub.usb0 configs/c.1/
 
 # Enable gadget
 ls /sys/class/udc > UDC
@@ -61,4 +62,3 @@ if [[ ! -s UDC ]]; then
     echo "UDC not found" >&2
     exit 1
 fi
-
