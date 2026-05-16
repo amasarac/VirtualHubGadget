@@ -1,3 +1,4 @@
+// Simplified main program
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,6 +10,7 @@
 #include "interrupt_transfer_queue.h"
 #include "bulk_transfer_queue.h"
 #include "cli.h"
+#include "common.h"
 
 /* Simple representation of a connected device.  */
 typedef struct {

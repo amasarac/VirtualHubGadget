@@ -47,7 +47,7 @@ typedef struct {
  * structure here.  This keeps the interfaces intact while allowing the
  * code to compile and be unit tested.
  */
-// typedef transfer_t interrupt_transfer_t;
-// typedef transfer_t bulk_transfer_t;
+typedef transfer_t interrupt_transfer_t;
+typedef transfer_t bulk_transfer_t;
 
 #endif /* TRANSFER_H */
