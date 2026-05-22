@@ -15,6 +15,15 @@ typedef struct isochronous_transfer {
 } isochronous_transfer_t;
 
 typedef struct isochronous_transfer_queue {
+    isochronous_transfer_t *transfers;
+    size_t capacity;
+    size_t size;
+    size_t front;
+    size_t rear;
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+} isochronous_transfer_queue_t;
+typedef struct isochronous_transfer_queue {
     isochronous_transfer_t *queue;
     size_t capacity;
     size_t size;
