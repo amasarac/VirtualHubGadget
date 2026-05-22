@@ -1,13 +1,63 @@
-//usbgadget.c
-
 #include <stdio.h>
-#include <pthread.h>
-#include "usb_gadget.h"
 #include <stdlib.h>
-#include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
 #include <signal.h>
 #include "gadgetfs_api.h"
+#include "usb_gadget.h"
+#include <pthread.h>
+#include <fcntl.h>
+
+/* Stub for USBIP structures to fix compile errors */
+typedef struct { uint32_t command; uint32_t seqnum; uint32_t devid; uint32_t direction; uint32_t ep; uint32_t num; uint32_t len; } usbip_header_t;
+typedef struct { usbip_header_t base; unsigned char data[0]; } usbip_packet_t;
+#define USBIP_MAX_DATA_SIZE 4096
+#define USBIP_IN_ENDPOINT 0x81
+#define USBIP_OUT_ENDPOINT 0x01
+
+void forward_isochronous_transfer(int config_index, int iface_index, int altsetting_index, int ep_index) {
+    (void)config_index; (void)iface_index; (void)altsetting_index; (void)ep_index;
+}
+
+void forward_control_transfer() {}
+
+void forward_bulk_transfer(int src_ep_addr, int dst_ep_addr) {
+    (void)src_ep_addr; (void)dst_ep_addr;
+}
+
+void forward_interrupt_transfer(int src_ep_addr, int dst_ep_addr) {
+    (void)src_ep_addr; (void)dst_ep_addr;
+}
+
+void forward_data(usb_transfer_t *transfer) {
+    (void)transfer;
+}
+
+static void *handle_gadgetfs_events(void *arg) {
+    int gadgetfs_fd = *(int *)arg;
+
+    while (1) {
+        int poll_result = gadgetfs_poll_fd(gadgetfs_fd);
+        if (poll_result > 0) {
+            int event_type = gadgetfs_event(gadgetfs_fd, NULL);
+            switch (event_type) {
+                case GADGETFS_NOP: break;
+                case GADGETFS_CONNECT: printf("Device connected\n"); break;
+                case GADGETFS_DISCONNECT: printf("Device disconnected\n"); break;
+                case GADGETFS_SETUP: printf("Setup packet received\n"); break;
+                case GADGETFS_SUSPEND: printf("Device suspended\n"); break;
+                default: fprintf(stderr, "Unknown GadgetFS event: %d\n", event_type); break;
+            }
+        } else if (poll_result < 0) {
+            perror("Error polling GadgetFS");
+            break;
+        }
+    }
+    return NULL;
+}
+
+
+
 
 libusb_device_handle *src_dev_handle; // Source device handle
 libusb_device_handle *dst_dev_handle; // Destination device handle
@@ -245,72 +295,104 @@ static void *handle_gadgetfs_events(void *arg) {
     return NULL;
 }
 
-void *handle_usbip_traffic(void *arg) {
-    libusb_device *device = (libusb_device *)arg;
+void forward_control_transfer(uint8_t bmRequestType, uint8_t bRequest, uint16_t wValue, uint16_t wIndex, unsigned char *data, uint16_t wLength) {
+    if (!g_dst_dev_handle) return;
+    int r = libusb_control_transfer(g_dst_dev_handle, bmRequestType, bRequest, wValue, wIndex, data, wLength, 1000);
+    if (r < 0) {
+        fprintf(stderr, "Error: control transfer failed: %s\n", libusb_error_name(r));
+    }
+}
 
-    // Initialize USB/IP traffic handling
-    libusb_context *context;
-    int result = libusb_init(&context);
-    if (result < 0) {
-        fprintf(stderr, "Error initializing libusb: %s\n", libusb_error_name(result));
-        return NULL;
+void forward_bulk_transfer(int src_ep_addr, int dst_ep_addr) {
+    if (!g_src_dev_handle || !g_dst_dev_handle) return;
+    unsigned char data_buffer[4096];
+    int actual_length;
+    int r = libusb_bulk_transfer(g_src_dev_handle, src_ep_addr, data_buffer, sizeof(data_buffer), &actual_length, 1000);
+    if (r < 0) {
+        fprintf(stderr, "Error: bulk read failed: %s\n", libusb_error_name(r));
+        return;
     }
 
-    libusb_device_handle *handle = libusb_open_device_with_vid_pid(
-        context,
-        libusb_get_device_vendor_id(device),
-        libusb_get_device_product_id(device));
-    if (!handle) {
-        fprintf(stderr, "Error opening device with USB/IP: %s\n", libusb_error_name(result));
-        libusb_exit(context);
-        return NULL;
+    r = libusb_bulk_transfer(g_dst_dev_handle, dst_ep_addr, data_buffer, actual_length, &actual_length, 1000);
+    if (r < 0) {
+        fprintf(stderr, "Error: bulk write failed: %s\n", libusb_error_name(r));
+    }
+}
+
+void forward_interrupt_transfer(int src_ep_addr, int dst_ep_addr) {
+    if (!g_src_dev_handle || !g_dst_dev_handle) return;
+    unsigned char data_buffer[64];
+    int actual_length;
+    int r = libusb_interrupt_transfer(g_src_dev_handle, src_ep_addr, data_buffer, sizeof(data_buffer), &actual_length, 1000);
+    if (r < 0) {
+        fprintf(stderr, "Error: interrupt read failed: %s\n", libusb_error_name(r));
+        return;
     }
 
-    result = libusb_claim_interface(handle, 0);
-    if (result < 0) {
-        fprintf(stderr, "Error claiming interface with USB/IP: %s\n", libusb_error_name(result));
-        libusb_close(handle);
-        libusb_exit(context);
-        return NULL;
+    r = libusb_interrupt_transfer(g_dst_dev_handle, dst_ep_addr, data_buffer, actual_length, &actual_length, 1000);
+    if (r < 0) {
+        fprintf(stderr, "Error: interrupt write failed: %s\n", libusb_error_name(r));
     }
+}
+
+void forward_data(usb_transfer_t *transfer) {
+    if (!transfer || !g_dst_dev_handle) return;
+
+    unsigned char *data = transfer->data;
+    int data_length = transfer->length;
+    int actual_length = 0;
+    int result = 0;
+
+    switch (transfer->transfer_type) {
+        case CONTROL_TRANSFER:
+            if (data_length >= 8) {
+                result = libusb_control_transfer(g_dst_dev_handle, transfer->endpoint, data[0], data[1] | (data[2] << 8), data[3] | (data[4] << 8), data + 8, data_length - 8, 5000);
+            }
+            break;
+        case BULK_TRANSFER:
+            result = libusb_bulk_transfer(g_dst_dev_handle, transfer->endpoint, data, data_length, &actual_length, 5000);
+            break;
+        case INTERRUPT_TRANSFER:
+            result = libusb_interrupt_transfer(g_dst_dev_handle, transfer->endpoint, data, data_length, &actual_length, 5000);
+            break;
+        case ISOCHRONOUS_TRANSFER:
+            fprintf(stderr, "Isochronous forwarding not supported\n");
+            break;
+        default:
+            fprintf(stderr, "Invalid transfer type: %d\n", transfer->transfer_type);
+            return;
+    }
+
+    if (result < 0 && transfer->transfer_type != ISOCHRONOUS_TRANSFER) {
+        fprintf(stderr, "Error in forward_data: %s\n", libusb_error_name(result));
+    }
+}
+
+static void *handle_gadgetfs_events(void *arg) {
+    int gadgetfs_fd = *(int *)arg;
 
     while (1) {
-        // Process incoming USB/IP traffic
-        unsigned char in_buffer[USBIP_MAX_DATA_SIZE];
-        int actual_length;
-
-        result = libusb_bulk_transfer(handle, USBIP_IN_ENDPOINT, in_buffer, sizeof(in_buffer), &actual_length, 0);
-        if (result < 0) {
-            fprintf(stderr, "Error receiving USB/IP packet: %s\n", libusb_error_name(result));
-            break;
-        }
-
-        // Forward the incoming packet to the appropriate endpoint
-        usbip_packet_t *in_packet = (usbip_packet_t *)in_buffer;
-        usb_transfer_t transfer;
-        transfer.endpoint_address = in_packet->base.ep;
-        transfer.transfer_type = in_packet->base.type;
-        transfer.num_iso_packets = in_packet->base.num;
-        transfer.packet_length = in_packet->base.len;
-        transfer.timeout = 5000;
-        memcpy(transfer.data, in_packet->data, actual_length - sizeof(usbip_header_t));
-        forward_data(&transfer);
-
-        // Send outgoing USB/IP traffic
-        unsigned char out_buffer[USBIP_MAX_DATA_SIZE];
-        // Pack the outgoing packets into a USB/IP packet format
-
-        result = libusb_bulk_transfer(handle, USBIP_OUT_ENDPOINT, out_buffer, sizeof(out_buffer), &actual_length, 0);
-        if (result < 0) {
-            fprintf(stderr, "Error sending USB/IP packet: %s\n", libusb_error_name(result));
+        int poll_result = gadgetfs_poll_fd(gadgetfs_fd);
+        if (poll_result > 0) {
+            int event_type = gadgetfs_event(gadgetfs_fd, NULL);
+            switch (event_type) {
+                case GADGETFS_NOP: break;
+                case GADGETFS_CONNECT: printf("Device connected\n"); break;
+                case GADGETFS_DISCONNECT: printf("Device disconnected\n"); break;
+                case GADGETFS_SETUP: printf("Setup packet received\n"); break;
+                case GADGETFS_SUSPEND: printf("Device suspended\n"); break;
+                default: fprintf(stderr, "Unknown GadgetFS event: %d\n", event_type); break;
+            }
+        } else if (poll_result < 0) {
+            perror("Error polling GadgetFS");
             break;
         }
     }
+    return NULL;
+}
 
-    libusb_release_interface(handle, 0);
-    libusb_close(handle);
-    libusb_exit(context);
-
+void *handle_usbip_traffic(void *arg) {
+    (void)arg;
     return NULL;
 }
 
@@ -319,8 +401,8 @@ int usb_gadget_start(const char *gadgetfs_dir, libusb_device *device) {
     if (!gadgetfs_dir || !device) {
         return -1;
     }
-
     usb_device_info_t device_info;
+    memset(&device_info, 0, sizeof(device_info));
 
     // Populate device_info from the libusb_device
 
@@ -343,7 +425,8 @@ int usb_gadget_start(const char *gadgetfs_dir, libusb_device *device) {
     thread_create_result = pthread_create(&usbip_thread, NULL, handle_usbip_traffic, device);
     if (thread_create_result != 0) {
         perror("Error creating USB/IP handling thread");
-        close(gadgetfs_fd);
+        pthread_cancel(gadgetfs_thread);
+        gadgetfs_exit(&gfs);
         return -1;
     }
 

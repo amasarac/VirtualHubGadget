@@ -12,7 +12,7 @@
 #include <poll.h>
 
 // Helper function: read a string descriptor from the device
-static int read_string_descriptor(libusb_device_handle *dev_handle, uint8_t index, char *buf, size_t buf_len) {
+static int __attribute__((unused)) read_string_descriptor(libusb_device_handle *dev_handle, uint8_t index, char *buf, size_t buf_len) {
     if (buf_len < 2) {
         return LIBUSB_ERROR_OVERFLOW;
     }
@@ -22,7 +22,7 @@ static int read_string_descriptor(libusb_device_handle *dev_handle, uint8_t inde
         return r;
     }
 
-    if (buf[0] != buf_len || buf[1] != LIBUSB_DT_STRING) {
+    if ((size_t)buf[0] != buf_len || buf[1] != LIBUSB_DT_STRING) {
         return LIBUSB_ERROR_IO;
     }
 

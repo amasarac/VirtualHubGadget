@@ -14,6 +14,8 @@ void isochronous_transfer_queue_init(isochronous_transfer_queue_t *queue, size_t
     queue->transfers = malloc(capacity * sizeof(isochronous_transfer_t));
     pthread_mutex_init(&queue->mutex, NULL);
     pthread_cond_init(&queue->cond, NULL);
+    pthread_cond_init(&queue->cond_full, NULL);
+    pthread_cond_init(&queue->cond_empty, NULL);
 }
 
 
@@ -22,6 +24,9 @@ void isochronous_transfer_queue_destroy(isochronous_transfer_queue_t *q) {
     if (q->transfers) {
         free(q->transfers);
         q->transfers = NULL;
+    if (q->queue) {
+        free(q->queue);
+        q->queue = NULL;
     }
 
     q->size = 0;
