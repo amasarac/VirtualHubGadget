@@ -32,7 +32,7 @@ interrupt_transfer_queue_t* interrupt_transfer_queue_create(int endpoint_fd, boo
     interrupt_transfer_queue_t *queue = malloc(sizeof(interrupt_transfer_queue_t));
     if (!queue) {
         fprintf(stderr, "Error: Failed to allocate memory for interrupt transfer queue.\n");
-        exit(EXIT_FAILURE);
+        return NULL;
     }
 
     interrupt_transfer_queue_init(queue, QUEUE_SIZE);
@@ -68,7 +68,10 @@ void interrupt_transfer_queue_dequeue(interrupt_transfer_queue_t *queue, interru
 }
 
 void interrupt_transfer_queue_destroy(interrupt_transfer_queue_t *queue) {
-    free(queue->buffer);
+    if (queue->buffer) {
+        free(queue->buffer);
+        queue->buffer = NULL;
+    }
     pthread_mutex_destroy(&queue->lock);
     pthread_cond_destroy(&queue->not_empty);
     pthread_cond_destroy(&queue->not_full);

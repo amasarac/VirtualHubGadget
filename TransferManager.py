@@ -1,3 +1,5 @@
+"""USB Device Transfer Manager GUI application for binding/unbinding USB/IP devices."""
+
 import subprocess
 import tkinter as tk
 from tkinter import messagebox

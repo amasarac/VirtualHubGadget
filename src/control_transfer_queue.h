@@ -2,7 +2,8 @@
 #define CONTROL_TRANSFER_QUEUE_H
 
 #include <stdbool.h>
-#include "transfer_request.h"
+#include <pthread.h>
+#include "transfer.h"
 
 typedef struct {
     control_transfer_t *transfers;
@@ -10,6 +11,9 @@ typedef struct {
     int head;
     int tail;
     bool full;
+    pthread_mutex_t lock;
+    pthread_cond_t not_empty;
+    pthread_cond_t not_full;
 } control_transfer_queue_t;
 
 void control_transfer_queue_init(control_transfer_queue_t *queue,

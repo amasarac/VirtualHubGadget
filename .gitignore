@@ -1,0 +1,4 @@
+build/
+usb-gadget
+tests/test_queues
+*.o
