@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -pthread -Isrc -Wno-unused-variable -Wno-unused-parameter
 TEST_CFLAGS = $(CFLAGS) -I$(SRC_DIR)
 TEST_LDFLAGS = -lcmocka
-LDFLAGS = -ludev
+LDFLAGS = -ludev -lusb-1.0
 
 SRC_DIR = src
 BUILD_DIR = build
@@ -12,6 +12,7 @@ SRCS = \
     $(SRC_DIR)/isochronous_queue.c \
     $(SRC_DIR)/interrupt_transfer_queue.c \
     $(SRC_DIR)/bulk_transfer_queue.c \
+    $(SRC_DIR)/control_transfer_queue.c \
     $(SRC_DIR)/gadgetfs_api.c \
     $(SRC_DIR)/usb_device.c \
     $(SRC_DIR)/usb_gadget.c \
@@ -20,7 +21,7 @@ SRCS = \
 OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRCS))
 
 TARGET = usb-gadget
-.PHONY: all clean
+.PHONY: all clean test
 TEST_BIN = tests/test_queues
 
 all: $(TARGET)
@@ -35,11 +36,10 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 clean:
-	rm -rf $(BUILD_DIR) $(TARGET)
+	rm -rf $(BUILD_DIR) $(TARGET) $(TEST_BIN)
 
 $(TEST_BIN): $(BUILD_DIR)/bulk_transfer_queue.o $(BUILD_DIR)/interrupt_transfer_queue.o $(BUILD_DIR)/isochronous_queue.o tests/test_queues.c
 	$(CC) $(TEST_CFLAGS) $^ -o $@ $(TEST_LDFLAGS)
 
-.PHONY: test
 test: $(TEST_BIN)
 	./$(TEST_BIN)

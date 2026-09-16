@@ -57,8 +57,9 @@ ln -sf functions/hid.usb0 configs/c.1/
 ln -sf functions/hub.usb0 configs/c.1/
 
 # Enable gadget
-ls /sys/class/udc > UDC
-if [[ ! -s UDC ]]; then
-    echo "UDC not found" >&2
+if ls /sys/class/udc | grep -q .; then
+    ls /sys/class/udc | head -n 1 > UDC
+else
+    echo "No UDC found in /sys/class/udc" >&2
     exit 1
 fi
